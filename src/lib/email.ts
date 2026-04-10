@@ -89,16 +89,33 @@ function buildTransactionEmailHtml(params: TransactionEmailParams) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
     <title>${detail.subject}</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        .bg-body { background-color: #0A0E06 !important; color: #ECEFE7 !important; }
+        .bg-header { background: linear-gradient(135deg, #0A0E06 0%, #151C0F 100%) !important; border-bottom: 1px solid #1C2614 !important; }
+        .bg-card { background-color: #12180D !important; border-color: #1C2614 !important; color: #ECEFE7 !important; }
+        .bg-amount-box { background-color: #1A2312 !important; border-left-color: ${detail.color} !important; }
+        .text-main { color: #ECEFE7 !important; }
+        .text-value { color: #FFFFFF !important; }
+        .text-muted { color: #A1A89A !important; }
+        .border-divider { border-color: #1C2614 !important; }
+      }
+    </style>
   </head>
-  <body style="margin:0;padding:32px 16px;background:#F3F6EE;font-family:'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;color:#3c3c3c;">
+  <body class="bg-body" style="margin:0;padding:32px 16px;background:#F3F6EE;font-family:'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;color:#3c3c3c;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
       <tr>
         <td align="center">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;border-collapse:collapse;">
             <!-- Header -->
             <tr>
-              <td style="padding:32px 24px;background:linear-gradient(135deg, #0F0F11 0%, #1a1d19 100%);border-radius:12px 12px 0 0;text-align:center;">
+              <td class="bg-header" style="padding:32px 24px;background:linear-gradient(135deg, #0F0F11 0%, #1a1d19 100%);border-radius:12px 12px 0 0;text-align:center;">
                 <div style="font-size:48px;margin-bottom:16px;">${detail.icon}</div>
                 <div style="font-size:28px;font-weight:700;color:#CFFF8B;margin-bottom:8px;">${detail.title}</div>
                 <div style="font-size:14px;color:rgba(248,250,244,0.7);">${detail.subject}</div>
@@ -107,19 +124,19 @@ function buildTransactionEmailHtml(params: TransactionEmailParams) {
             
             <!-- Content -->
             <tr>
-              <td style="background:#F9FBF5;padding:32px 24px;border-radius:0 0 12px 12px;border-left:1px solid #e0e0e0;border-right:1px solid #e0e0e0;border-bottom:1px solid #e0e0e0;">
-                <div style="font-size:16px;line-height:1.6;color:#3c3c3c;margin-bottom:24px;">
+              <td class="bg-card" style="background:#F9FBF5;padding:32px 24px;border-radius:0 0 12px 12px;border-left:1px solid #e0e0e0;border-right:1px solid #e0e0e0;border-bottom:1px solid #e0e0e0;">
+                <div class="text-main" style="font-size:16px;line-height:1.6;color:#3c3c3c;margin-bottom:24px;">
                   <p>Hi ${firstName},</p>
                   <p>${detail.description}</p>
                 </div>
                 
                 <!-- Amount Card -->
-                <div style="background:#f5f5f5;border-left:4px solid ${detail.color};border-radius:6px;padding:16px 16px;margin-bottom:24px;font-size:14px;">
-                  <div style="color:#6c6c6c;margin-bottom:8px;">Amount transferred</div>
-                  <div style="font-size:24px;font-weight:700;color:#101112;">${params.amount.toLocaleString()} <span style="font-size:16px;color:#6c6c6c;">${params.asset}</span></div>
+                <div class="bg-amount-box" style="background:#f5f5f5;border-left:4px solid ${detail.color};border-radius:6px;padding:16px 16px;margin-bottom:24px;font-size:14px;">
+                  <div class="text-muted" style="color:#6c6c6c;margin-bottom:8px;">Amount transferred</div>
+                  <div class="text-value" style="font-size:24px;font-weight:700;color:#101112;">${params.amount.toLocaleString()} <span class="text-muted" style="font-size:16px;color:#6c6c6c;">${params.asset}</span></div>
                 </div>
 
-                <div style="font-size:13px;line-height:1.6;color:#6c6c6c;padding-top:16px;border-top:1px solid #e0e0e0;">
+                <div class="text-muted border-divider" style="font-size:13px;line-height:1.6;color:#6c6c6c;padding-top:16px;border-top:1px solid #e0e0e0;">
                   <p style="margin:0 0 8px 0;">Status: <strong>${params.status === 'completed' ? '✓ Completed' : '⏳ Pending'}</strong></p>
                   <p style="margin:0;">This transaction is visible in your MilesUp wallet and activity history.</p>
                 </div>
@@ -128,11 +145,11 @@ function buildTransactionEmailHtml(params: TransactionEmailParams) {
 
             <!-- Footer -->
             <tr>
-              <td style="padding:24px;text-align:center;font-size:12px;color:#6c6c6c;border-top:1px solid #e0e0e0;">
+              <td class="text-muted border-divider" style="padding:24px;text-align:center;font-size:12px;color:#6c6c6c;border-top:1px solid #e0e0e0;">
                 <p style="margin:0 0 12px 0;">
                   <a href="https://milesup.app" style="color:#7BD607;text-decoration:none;font-weight:600;">Visit MilesUp</a>
                 </p>
-                <p style="margin:0;color:#9c9c9c;">
+                <p class="text-muted" style="margin:0;color:#9c9c9c;">
                   MilesUp • All your programs. One intelligent view.<br/>
                   ${env.MAIL_FROM}
                 </p>
@@ -170,16 +187,34 @@ function buildVerificationEmailHtml(params: VerificationEmailParams) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
     <title>${copy.subject}</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        .bg-body { background-color: #0A0E06 !important; color: #ECEFE7 !important; }
+        .bg-top-card { background: #0A0E06 !important; border: 1px solid #1C2614 !important; box-shadow: none !important; }
+        .bg-main-card { background-color: #12180D !important; border-color: #1C2614 !important; box-shadow: none !important; color: #ECEFE7 !important; }
+        .bg-code-box { background: linear-gradient(180deg, #161D10 0%, #0A0E06 100%) !important; border-color: #2F3E22 !important; }
+        .bg-support-box { background-color: #151A0E !important; border-color: #222B18 !important; color: #A1A89A !important; }
+        
+        .text-main { color: #ECEFE7 !important; }
+        .text-muted { color: #A1A89A !important; }
+        .text-accent { color: #CFFF8B !important; }
+      }
+    </style>
   </head>
-  <body style="margin:0;padding:32px 16px;background:#F3F6EE;font-family:Inter,Segoe UI,Arial,sans-serif;color:#101112;">
+  <body class="bg-body" style="margin:0;padding:32px 16px;background:#F3F6EE;font-family:Inter,Segoe UI,Arial,sans-serif;color:#101112;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
       <tr>
         <td align="center">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;border-collapse:collapse;">
             <tr>
               <td style="padding:0 0 16px 0;">
-                <div style="background:#0F0F11;border-radius:28px;padding:24px 28px;color:#F8FAF4;box-shadow:0 18px 48px rgba(15,15,17,0.16);">
+                <div class="bg-top-card" style="background:#0F0F11;border-radius:28px;padding:24px 28px;color:#F8FAF4;box-shadow:0 18px 48px rgba(15,15,17,0.16);">
                   <div style="display:inline-block;padding:7px 12px;border-radius:999px;background:rgba(123,214,7,0.16);border:1px solid rgba(123,214,7,0.28);color:#CFFF8B;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
                     ${copy.eyebrow}
                   </div>
@@ -191,34 +226,34 @@ function buildVerificationEmailHtml(params: VerificationEmailParams) {
               </td>
             </tr>
             <tr>
-              <td style="background:#F9FBF5;border:1px solid #D5DCC8;border-radius:28px;padding:32px 28px;box-shadow:0 12px 32px rgba(15,15,17,0.06);">
-                <div style="font-size:14px;line-height:1.6;color:#545B50;">Hi, ${greetingName}.</div>
-                <div style="padding-top:8px;font-size:28px;font-weight:800;line-height:1.18;color:#101112;">
+              <td class="bg-main-card" style="background:#F9FBF5;border:1px solid #D5DCC8;border-radius:28px;padding:32px 28px;box-shadow:0 12px 32px rgba(15,15,17,0.06);">
+                <div class="text-muted" style="font-size:14px;line-height:1.6;color:#545B50;">Hi, ${greetingName}.</div>
+                <div class="text-main" style="padding-top:8px;font-size:28px;font-weight:800;line-height:1.18;color:#101112;">
                   ${copy.title}
                 </div>
-                <div style="padding-top:14px;font-size:16px;line-height:1.7;color:#545B50;">
+                <div class="text-muted" style="padding-top:14px;font-size:16px;line-height:1.7;color:#545B50;">
                   ${copy.description}
                 </div>
                 <div style="padding-top:24px;">
-                  <div style="border-radius:24px;background:linear-gradient(180deg,#101112 0%,#171A16 100%);padding:24px;border:1px solid rgba(123,214,7,0.22);text-align:center;">
+                  <div class="bg-code-box" style="border-radius:24px;background:linear-gradient(180deg,#101112 0%,#171A16 100%);padding:24px;border:1px solid rgba(123,214,7,0.22);text-align:center;">
                     <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(248,250,244,0.46);font-weight:700;">
                       Verification code
                     </div>
-                    <div style="padding-top:12px;font-size:40px;line-height:1;font-weight:800;letter-spacing:0.24em;color:#CFFF8B;">
+                    <div class="text-accent" style="padding-top:12px;font-size:40px;line-height:1;font-weight:800;letter-spacing:0.24em;color:#CFFF8B;">
                       ${params.code}
                     </div>
                   </div>
                 </div>
-                <div style="padding-top:18px;font-size:14px;line-height:1.7;color:#737C6D;">
+                <div class="text-muted" style="padding-top:18px;font-size:14px;line-height:1.7;color:#737C6D;">
                   This code expires in ${env.VERIFICATION_CODE_TTL_MINUTES} minutes.
                 </div>
-                <div style="margin-top:24px;padding:18px 20px;border-radius:20px;background:#EEF9DE;border:1px solid #DDF4BA;font-size:14px;line-height:1.7;color:#436E10;">
+                <div class="bg-support-box" style="margin-top:24px;padding:18px 20px;border-radius:20px;background:#EEF9DE;border:1px solid #DDF4BA;font-size:14px;line-height:1.7;color:#436E10;">
                   ${copy.supportLabel}
                 </div>
               </td>
             </tr>
             <tr>
-              <td style="padding:16px 6px 0 6px;font-size:12px;line-height:1.7;color:#737C6D;text-align:center;">
+              <td class="text-muted" style="padding:16px 6px 0 6px;font-size:12px;line-height:1.7;color:#737C6D;text-align:center;">
                 MilesUp - ${env.MAIL_FROM}
               </td>
             </tr>
@@ -239,8 +274,8 @@ function buildVerificationEmailText(params: VerificationEmailParams) {
     copy.title,
     copy.description,
     '',
-    `Codigo: ${params.code}`,
-    `Validade: ${env.VERIFICATION_CODE_TTL_MINUTES} minutos`,
+    `Code: ${params.code}`,
+    `Valid for: ${env.VERIFICATION_CODE_TTL_MINUTES} minutes`,
     '',
     copy.supportLabel
   ].join('\n');
