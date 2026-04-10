@@ -1,11 +1,15 @@
-import { ConnectionStatus, Prisma, ProviderKey } from '@prisma/client';
+import { AssetKey, ConnectionStatus, NotificationType, Prisma, ProviderKey } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 
 import { AppError } from '../../lib/errors';
 import { mapProvider, mapProviderConnection } from '../../lib/mappers';
+import { createNotification } from '../../lib/notifications';
 import { prisma } from '../../lib/prisma';
+
+const PROVIDER_CONNECT_BONUS_MILES = 10000;
+const PROVIDER_CONNECT_FLEX_BONUS = 10000;
 
 const providerSchema = z.object({
   key: z.nativeEnum(ProviderKey),
@@ -199,76 +203,102 @@ export async function providerRoutes(app: FastifyInstance) {
         });
       }
 
-      let connection;
+      const isFirstTimeConnection = !existing;
 
-      if (existing) {
-        connection = await prisma.providerConnection.update({
-          where: {
-            id: existing.id
-          },
-          data: {
-            status: ConnectionStatus.CONNECTED,
-            email: request.body.email,
-            secretMasked: request.body.secret ? 'configured' : existing.secretMasked,
-            metadata: request.body.metadata as Prisma.InputJsonValue | undefined,
-            connectedAt: new Date(),
-            lastSyncedAt: new Date(),
-            disconnectedAt: null
-          },
-          include: {
-            provider: true
-          }
-        });
-      } else {
-        connection = await prisma.providerConnection.create({
-          data: {
-            userId: request.currentUser.userId,
-            providerKey: request.body.providerKey,
-            externalAccountId: request.body.externalAccountId,
-            email: request.body.email,
-            secretMasked: request.body.secret ? 'configured' : null,
-            metadata: request.body.metadata as Prisma.InputJsonValue | undefined,
-            status: ConnectionStatus.CONNECTED,
-            lastSyncedAt: new Date()
-          },
-          include: {
-            provider: true
-          }
+      const result = await prisma.$transaction(async (tx) => {
+        let txConnection;
+
+        if (existing) {
+          txConnection = await tx.providerConnection.update({
+            where: {
+              id: existing.id
+            },
+            data: {
+              status: ConnectionStatus.CONNECTED,
+              email: request.body.email,
+              secretMasked: request.body.secret ? 'configured' : existing.secretMasked,
+              metadata: request.body.metadata as Prisma.InputJsonValue | undefined,
+              connectedAt: new Date(),
+              lastSyncedAt: new Date(),
+              disconnectedAt: null
+            },
+            include: {
+              provider: true
+            }
+          });
+        } else {
+          txConnection = await tx.providerConnection.create({
+            data: {
+              userId: request.currentUser.userId,
+              providerKey: request.body.providerKey,
+              externalAccountId: request.body.externalAccountId,
+              email: request.body.email,
+              secretMasked: request.body.secret ? 'configured' : null,
+              metadata: request.body.metadata as Prisma.InputJsonValue | undefined,
+              status: ConnectionStatus.CONNECTED,
+              lastSyncedAt: new Date()
+            },
+            include: {
+              provider: true
+            }
+          });
+        }
+
+        if (isFirstTimeConnection && provider.primaryAsset !== AssetKey.FLEX_MILES) {
+          await tx.walletBalance.upsert({
+            where: {
+              walletId_asset: {
+                walletId: wallet.id,
+                asset: provider.primaryAsset
+              }
+            },
+            update: {
+              amount: {
+                increment: PROVIDER_CONNECT_BONUS_MILES
+              }
+            },
+            create: {
+              walletId: wallet.id,
+              asset: provider.primaryAsset,
+              amount: PROVIDER_CONNECT_BONUS_MILES
+            }
+          });
+
+          await tx.walletBalance.upsert({
+            where: {
+              walletId_asset: {
+                walletId: wallet.id,
+                asset: AssetKey.FLEX_MILES
+              }
+            },
+            update: {
+              amount: {
+                increment: PROVIDER_CONNECT_FLEX_BONUS
+              }
+            },
+            create: {
+              walletId: wallet.id,
+              asset: AssetKey.FLEX_MILES,
+              amount: PROVIDER_CONNECT_FLEX_BONUS
+            }
+          });
+        }
+
+        return txConnection;
+      });
+
+      if (isFirstTimeConnection && provider.primaryAsset !== AssetKey.FLEX_MILES) {
+        await createNotification(prisma, {
+          userId: request.currentUser.userId,
+          type: NotificationType.TRANSFER_RECEIVED,
+          title: 'Bonus de conexao recebido',
+          body: `Voce ganhou ${PROVIDER_CONNECT_BONUS_MILES.toLocaleString('pt-BR')} milhas ${result.provider.displayName} e ${PROVIDER_CONNECT_FLEX_BONUS.toLocaleString('pt-BR')} FlexMiles por conectar ${result.provider.displayName}.`,
+          actionUrl: '/dashboard'
         });
       }
 
-      const defaultBalanceByAsset: Record<string, number> = {
-        LATAM_PASS: 18000,
-        LIVELO: 12000,
-        SMILES: 16000,
-        TUDOAZUL: 9000,
-        AADVANTAGE: 14000,
-        LIFEMILES: 8000,
-        DOTZ: 7000,
-        ESFERA: 11000,
-        IUPP: 13000,
-        KM_DE_VANTAGENS: 6000,
-        ATOMOS_C6: 10000,
-        FIDELIDADE_123: 5000
-      };
-
-      await prisma.walletBalance.upsert({
-        where: {
-          walletId_asset: {
-            walletId: wallet.id,
-            asset: provider.primaryAsset
-          }
-        },
-        update: {},
-        create: {
-          walletId: wallet.id,
-          asset: provider.primaryAsset,
-          amount: defaultBalanceByAsset[provider.primaryAsset] ?? 5000
-        }
-      });
-
       reply.status(201);
-      return mapProviderConnection(connection, connection.provider);
+      return mapProviderConnection(result, result.provider);
     }
   );
 

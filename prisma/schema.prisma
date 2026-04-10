@@ -169,6 +169,14 @@ enum MediaKind {
   AVATAR
 }
 
+enum MilesPurchaseStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
 model User {
   id                  String                @id @default(uuid())
   email               String                @unique
@@ -202,6 +210,7 @@ model User {
   supportConversation SupportConversation?
   uploadedMedia       MediaAsset[]          @relation("UploadedMedia")
   securitySessions    SecurityModeSession[]
+  milesPurchases      MilesPurchase[]
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
 }
@@ -254,6 +263,7 @@ model Wallet {
   conversionIntents  ConversionIntent[]
   conversions        Conversion[]
   securitySessions   SecurityModeSession[]
+  milesPurchases     MilesPurchase[]
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 }
@@ -576,4 +586,26 @@ model SecurityModeSession {
   endedAt   DateTime?
 
   @@index([walletId, endedAt])
+}
+
+model MilesPurchase {
+  id              String              @id @default(uuid())
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletId        String
+  wallet          Wallet              @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  packageCode     String
+  amountMiles     Int
+  bonusMiles      Int                 @default(0)
+  totalMiles      Int
+  amountMinor     Int
+  currency        String              @default("BRL")
+  paymentMethod   String              @default("CARD")
+  paymentRef      String              @unique
+  status          MilesPurchaseStatus @default(PENDING)
+  failureReason   String?
+  createdAt       DateTime            @default(now())
+  completedAt     DateTime?
+
+  @@index([userId, createdAt])
 }
