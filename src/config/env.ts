@@ -31,8 +31,11 @@ const envSchema = z.object({
   RESEND_API_KEY: z
     .string()
     .optional()
-    .transform((value) => value?.trim() || undefined),
-  MAIL_FROM: z.string().email().default('no-reply@milesup.local'),
+    .transform((value) => value?.trim() || undefined)
+    .refine((val) => !val || val.startsWith('re_'), {
+      message: 'RESEND_API_KEY must start with "re_". Please check your configuration.'
+    }),
+  MAIL_FROM: z.string().email().default('noreply@resend.dev'),
   MAIL_FROM_NAME: z.string().default('MilesUp'),
   MAIL_REPLY_TO: z
     .string()

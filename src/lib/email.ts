@@ -291,11 +291,12 @@ export async function sendTransactionEmail(params: TransactionEmailParams) {
   }
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch('https://api.resend.com/v1/emails', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
       },
       body: JSON.stringify({
         from: `${env.MAIL_FROM_NAME} <${env.MAIL_FROM}>`,
@@ -348,11 +349,12 @@ export async function sendVerificationEmail(params: VerificationEmailParams) {
   }
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch('https://api.resend.com/v1/emails', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
       },
       body: JSON.stringify({
         from: `${env.MAIL_FROM_NAME} <${env.MAIL_FROM}>`,
@@ -366,7 +368,21 @@ export async function sendVerificationEmail(params: VerificationEmailParams) {
 
     if (!response.ok) {
       const responseText = await response.text();
-      throw new Error(`Resend responded with ${response.status}: ${responseText}`);
+      let parsedError;
+      try {
+        parsedError = JSON.parse(responseText);
+      } catch {
+        parsedError = { message: responseText };
+      }
+
+      const errorMessage = `Resend responded with ${response.status}: ${JSON.stringify(parsedError)}`;
+      
+      // If we get a 404 with a specific message, it's often a configuration/routing issue
+      if (response.status === 404 && responseText.includes('Application not found')) {
+        console.error('CRITICAL EMAIL ERROR: 404 Application not found. This usually means the API key is invalid or associated with a deleted account, or the domain is not verified.');
+      }
+
+      throw new Error(errorMessage);
     }
 
     return {
