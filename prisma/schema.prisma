@@ -1,0 +1,579 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  COMPANY
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum SessionStatus {
+  PENDING_2FA
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum VerificationPurpose {
+  REGISTER
+  LOGIN_2FA
+  PASSWORD_RESET
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  USED
+  EXPIRED
+  CANCELLED
+}
+
+enum WalletKind {
+  PERSONAL
+}
+
+enum AssetKey {
+  FLEX_MILES
+  LATAM_PASS
+  LIVELO
+  SMILES
+  TUDOAZUL
+  AADVANTAGE
+  LIFEMILES
+  DOTZ
+  ESFERA
+  IUPP
+  KM_DE_VANTAGENS
+  ATOMOS_C6
+  FIDELIDADE_123
+  CASH
+}
+
+enum ProviderKey {
+  FLEXMILES_INTERNAL
+  LATAM_PASS
+  LIVELO
+  SMILES
+  TUDOAZUL
+  AADVANTAGE
+  LIFEMILES
+  DOTZ
+  ESFERA
+  IUPP
+  KM_DE_VANTAGENS
+  ATOMOS_C6
+  FIDELIDADE_123
+  STRIPE
+  SECURITY_SANDBOX
+}
+
+enum ConnectType {
+  OAUTH
+  CREDENTIALS
+  MANUAL
+}
+
+enum ConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum TransferStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum ConversionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+enum SubscriptionStatus {
+  FREE
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+  FAILED
+}
+
+enum PaymentMethodType {
+  CARD
+  PIX
+  OTHER
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+enum NotificationType {
+  TRANSFER_SENT
+  TRANSFER_RECEIVED
+  CONVERSION_COMPLETED
+  BILLING
+  SUPPORT
+  SECURITY
+}
+
+enum SupportConversationStatus {
+  OPEN
+  CLOSED
+}
+
+enum SupportAuthorType {
+  USER
+  AGENT
+  SYSTEM
+}
+
+enum CheckoutStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum MediaKind {
+  AVATAR
+}
+
+model User {
+  id                  String                @id @default(uuid())
+  email               String                @unique
+  name                String
+  phone               String?
+  cpf                 String?               @unique
+  cnpj                String?               @unique
+  birthDate           DateTime?
+  role                UserRole              @default(USER)
+  status              UserStatus            @default(ACTIVE)
+  companyName         String?
+  flexKey             String                @unique
+  passwordHash        String
+  transactionPinHash  String
+  profilePhotoAssetId String?               @unique
+  profilePhotoAsset   MediaAsset?           @relation("ProfilePhoto", fields: [profilePhotoAssetId], references: [id], onDelete: SetNull)
+  wallet              Wallet?
+  authSessions        AuthSession[]
+  verificationCodes   VerificationCode[]
+  providerConnections ProviderConnection[]
+  sentTransferIntents TransferIntent[]      @relation("TransferIntentSender")
+  receivedTransfers   Transfer[]            @relation("TransferReceiver")
+  sentTransfers       Transfer[]            @relation("TransferSender")
+  conversionIntents   ConversionIntent[]
+  conversions         Conversion[]
+  subscriptions       Subscription[]
+  invoices            Invoice[]
+  paymentMethods      PaymentMethod[]
+  checkoutSessions    CheckoutSession[]
+  notifications       Notification[]
+  supportConversation SupportConversation?
+  uploadedMedia       MediaAsset[]          @relation("UploadedMedia")
+  securitySessions    SecurityModeSession[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+}
+
+model AuthSession {
+  id               String        @id @default(uuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId         String
+  refreshTokenHash String?
+  status           SessionStatus @default(PENDING_2FA)
+  expiresAt        DateTime
+  refreshExpiresAt DateTime
+  requiresTwoFactor Boolean      @default(true)
+  verifiedAt       DateTime?
+  revokedAt        DateTime?
+  lastUsedAt       DateTime?
+  createdAt        DateTime      @default(now())
+
+  @@index([userId, deviceId])
+}
+
+model VerificationCode {
+  id         String              @id @default(uuid())
+  userId     String?
+  user       User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email      String
+  purpose    VerificationPurpose
+  status     VerificationStatus  @default(PENDING)
+  codeHash   String
+  payload    Json?
+  attempts   Int                 @default(0)
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime            @default(now())
+
+  @@index([email, purpose, status])
+}
+
+model Wallet {
+  id                 String                @id @default(uuid())
+  userId             String                @unique
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind               WalletKind            @default(PERSONAL)
+  securityModeActive Boolean               @default(false)
+  balances           WalletBalance[]
+  sentTransfers      Transfer[]            @relation("WalletTransferSender")
+  receivedTransfers  Transfer[]            @relation("WalletTransferReceiver")
+  transferIntents    TransferIntent[]
+  conversionIntents  ConversionIntent[]
+  conversions        Conversion[]
+  securitySessions   SecurityModeSession[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+}
+
+model WalletBalance {
+  id        String   @id @default(uuid())
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  asset     AssetKey
+  amount    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([walletId, asset])
+}
+
+model Provider {
+  key                ProviderKey         @id
+  displayName        String
+  description        String
+  connectType        ConnectType
+  supportedAssets    AssetKey[]
+  primaryAsset       AssetKey
+  brandColor         String
+  providerToFlexRate Decimal            @db.Decimal(10, 4)
+  providerToFlexFeeBps Int              @default(0)
+  connections        ProviderConnection[]
+  conversionIntents  ConversionIntent[]
+  conversions        Conversion[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+model ProviderConnection {
+  id                String           @id @default(uuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerKey       ProviderKey
+  provider          Provider         @relation(fields: [providerKey], references: [key], onDelete: Restrict)
+  externalAccountId String
+  email             String?
+  secretMasked      String?
+  status            ConnectionStatus @default(CONNECTED)
+  metadata          Json?
+  connectedAt       DateTime         @default(now())
+  lastSyncedAt      DateTime?
+  disconnectedAt    DateTime?
+  conversionIntents ConversionIntent[]
+  conversions       Conversion[]
+
+  @@unique([userId, providerKey, externalAccountId])
+}
+
+model TransferIntent {
+  id             String         @id @default(uuid())
+  fromUserId     String
+  fromUser       User           @relation("TransferIntentSender", fields: [fromUserId], references: [id], onDelete: Cascade)
+  fromWalletId   String
+  fromWallet     Wallet         @relation(fields: [fromWalletId], references: [id], onDelete: Cascade)
+  toUserId       String?
+  toWalletId     String?
+  recipientLabel String
+  recipientHandle String
+  amountMiles    Int
+  feeMiles       Int            @default(0)
+  note           String?
+  status         TransferStatus @default(PENDING)
+  expiresAt      DateTime
+  confirmedAt    DateTime?
+  createdAt      DateTime       @default(now())
+}
+
+model Transfer {
+  id               String         @id @default(uuid())
+  fromUserId       String
+  fromUser         User           @relation("TransferSender", fields: [fromUserId], references: [id], onDelete: Cascade)
+  fromWalletId     String
+  fromWallet       Wallet         @relation("WalletTransferSender", fields: [fromWalletId], references: [id], onDelete: Cascade)
+  toUserId         String
+  toUser           User           @relation("TransferReceiver", fields: [toUserId], references: [id], onDelete: Cascade)
+  toWalletId       String
+  toWallet         Wallet         @relation("WalletTransferReceiver", fields: [toWalletId], references: [id], onDelete: Cascade)
+  amountMiles      Int
+  feeMiles         Int            @default(0)
+  note             String?
+  status           TransferStatus @default(COMPLETED)
+  usedSecurityMode Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  completedAt      DateTime?
+
+  @@index([fromUserId, createdAt])
+  @@index([toUserId, createdAt])
+}
+
+model ConversionIntent {
+  id                   String           @id @default(uuid())
+  userId               String
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletId             String
+  wallet               Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  providerKey          ProviderKey
+  provider             Provider         @relation(fields: [providerKey], references: [key], onDelete: Restrict)
+  providerConnectionId String
+  providerConnection   ProviderConnection @relation(fields: [providerConnectionId], references: [id], onDelete: Cascade)
+  fromAsset            AssetKey
+  toAsset              AssetKey
+  amountInMiles        Int
+  amountOutMiles       Int
+  feeMiles             Int              @default(0)
+  rate                 Decimal          @db.Decimal(10, 4)
+  note                 String?
+  status               ConversionStatus @default(PENDING)
+  expiresAt            DateTime
+  confirmedAt          DateTime?
+  createdAt            DateTime         @default(now())
+}
+
+model Conversion {
+  id                   String           @id @default(uuid())
+  userId               String
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletId             String
+  wallet               Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  providerKey          ProviderKey
+  provider             Provider         @relation(fields: [providerKey], references: [key], onDelete: Restrict)
+  providerConnectionId String
+  providerConnection   ProviderConnection @relation(fields: [providerConnectionId], references: [id], onDelete: Cascade)
+  fromAsset            AssetKey
+  toAsset              AssetKey
+  amountInMiles        Int
+  amountOutMiles       Int
+  feeMiles             Int              @default(0)
+  rate                 Decimal          @db.Decimal(10, 4)
+  note                 String?
+  status               ConversionStatus @default(COMPLETED)
+  usedSecurityMode     Boolean          @default(false)
+  createdAt            DateTime         @default(now())
+  completedAt          DateTime?
+
+  @@index([userId, createdAt])
+}
+
+model SubscriptionPlan {
+  id                 String    @id @default(uuid())
+  code               String
+  name               String
+  description        String
+  country            String
+  currency           String
+  monthlyAmountMinor Int
+  yearlyAmountMinor  Int
+  highlighted        Boolean   @default(false)
+  perks              String[]
+  subscriptions      Subscription[]
+  checkoutSessions   CheckoutSession[]
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([code, country])
+}
+
+model Subscription {
+  id                 String             @id @default(uuid())
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId             String
+  plan               SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  status             SubscriptionStatus @default(FREE)
+  interval           BillingInterval?
+  cancelAtPeriodEnd  Boolean            @default(false)
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  nextBillingDate    DateTime?
+  nextAmountMinor    Int                @default(0)
+  currency           String
+  paymentMethodId    String?
+  paymentMethod      PaymentMethod?     @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  invoices           Invoice[]
+  checkoutSessions   CheckoutSession[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  cancelledAt        DateTime?
+
+  @@index([userId, updatedAt])
+}
+
+model Invoice {
+  id                   String        @id @default(uuid())
+  userId               String
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId       String
+  subscription         Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  status               InvoiceStatus @default(OPEN)
+  amountDueMinor       Int
+  amountPaidMinor      Int           @default(0)
+  amountRemainingMinor Int           @default(0)
+  currency             String
+  hostedInvoiceUrl     String?
+  invoicePdfUrl        String?
+  dueDate              DateTime
+  periodStart          DateTime
+  periodEnd            DateTime
+  paidAt               DateTime?
+  createdAt            DateTime      @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model PaymentMethod {
+  id              String            @id @default(uuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerRef     String            @unique
+  type            PaymentMethodType @default(CARD)
+  brand           String
+  last4           String
+  expMonth        Int
+  expYear         Int
+  holderName      String?
+  isDefault       Boolean           @default(false)
+  subscriptions   Subscription[]
+  checkoutSessions CheckoutSession[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model CheckoutSession {
+  id               String          @id @default(uuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId           String
+  plan             SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  subscriptionId   String?
+  subscription     Subscription?   @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  paymentMethodId  String?
+  paymentMethod    PaymentMethod?  @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  status           CheckoutStatus  @default(OPEN)
+  interval         BillingInterval
+  country          String
+  currency         String
+  amountMinor      Int
+  email            String
+  successRedirectUrl String
+  cancelRedirectUrl String
+  publicToken      String          @unique
+  expiresAt        DateTime
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime        @default(now())
+}
+
+model Notification {
+  id         String             @id @default(uuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  title      String
+  body       String
+  actionUrl  String?
+  status     NotificationStatus @default(UNREAD)
+  createdAt  DateTime           @default(now())
+  readAt     DateTime?
+
+  @@index([userId, status, createdAt])
+}
+
+model SupportFaq {
+  id        String   @id @default(uuid())
+  question  String
+  answer    String
+  category  String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SupportConversation {
+  id        String                    @id @default(uuid())
+  userId    String                    @unique
+  user      User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    SupportConversationStatus @default(OPEN)
+  messages  SupportMessage[]
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+}
+
+model SupportMessage {
+  id             String              @id @default(uuid())
+  conversationId String
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  authorType     SupportAuthorType
+  authorName     String
+  body           String
+  createdAt      DateTime            @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model MediaAsset {
+  id                 String      @id @default(uuid())
+  userId             String
+  user               User        @relation("UploadedMedia", fields: [userId], references: [id], onDelete: Cascade)
+  profilePhotoForUser User?      @relation("ProfilePhoto")
+  kind               MediaKind
+  fileName           String
+  mimeType           String
+  sizeBytes          Int
+  content            Bytes
+  createdAt          DateTime    @default(now())
+}
+
+model SecurityModeSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  reason    String?
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+
+  @@index([walletId, endedAt])
+}
