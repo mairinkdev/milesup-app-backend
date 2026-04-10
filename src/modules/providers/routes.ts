@@ -7,6 +7,7 @@ import { AppError } from '../../lib/errors';
 import { mapProvider, mapProviderConnection } from '../../lib/mappers';
 import { createNotification } from '../../lib/notifications';
 import { prisma } from '../../lib/prisma';
+import { ensureProviderCatalog } from '../../lib/providerCatalog';
 
 const PROVIDER_CONNECT_BONUS_MILES = 10000;
 const PROVIDER_CONNECT_FLEX_BONUS = 10000;
@@ -55,6 +56,8 @@ export async function providerRoutes(app: FastifyInstance) {
       }
     },
     async () => {
+      await ensureProviderCatalog();
+
       const providers = await prisma.provider.findMany({
         orderBy: {
           displayName: 'asc'
@@ -84,6 +87,8 @@ export async function providerRoutes(app: FastifyInstance) {
       }
     },
     async (request) => {
+      await ensureProviderCatalog();
+
       const provider = await prisma.provider.findUnique({
         where: {
           key: request.params.providerKey
@@ -159,6 +164,8 @@ export async function providerRoutes(app: FastifyInstance) {
       }
     },
     async (request, reply) => {
+      await ensureProviderCatalog();
+
       const provider = await prisma.provider.findUnique({
         where: {
           key: request.body.providerKey

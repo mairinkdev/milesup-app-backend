@@ -1,5 +1,6 @@
 import { buildApp } from './app';
 import { env } from './config/env';
+import { ensureProviderCatalog } from './lib/providerCatalog';
 import { prisma } from './lib/prisma';
 
 async function start() {
@@ -21,7 +22,11 @@ async function start() {
   // Railway's healthcheck.
   prisma
     .$connect()
-    .then(() => app.log.info('prisma: connection established'))
+    .then(async () => {
+      app.log.info('prisma: connection established');
+      await ensureProviderCatalog();
+      app.log.info('provider catalog: ready');
+    })
     .catch((error) => app.log.error({ err: error }, 'prisma: failed to connect'));
 }
 
