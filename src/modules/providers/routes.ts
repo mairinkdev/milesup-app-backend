@@ -245,6 +245,29 @@ export async function providerRoutes(app: FastifyInstance) {
         }
 
         if (isFirstTimeConnection && provider.primaryAsset !== AssetKey.FLEX_MILES) {
+          // Find or create internal system user for bonus transfers
+          let systemUser = await tx.user.findUnique({
+            where: { email: 'system@milesup.app' },
+            include: { wallet: true }
+          });
+
+          if (!systemUser) {
+            systemUser = await tx.user.create({
+              data: {
+                email: 'system@milesup.app',
+                name: 'MilesUp System',
+                flexKey: 'SYSTEM-INTERNAL',
+                passwordHash: 'INTERNAL',
+                transactionPinHash: 'INTERNAL',
+                wallet: { create: {} }
+              },
+              include: { wallet: true }
+            });
+          }
+
+          const systemWalletId = systemUser.wallet!.id;
+
+          // Award provider miles bonus
           await tx.walletBalance.upsert({
             where: {
               walletId_asset: {
@@ -264,6 +287,19 @@ export async function providerRoutes(app: FastifyInstance) {
             }
           });
 
+          await tx.transfer.create({
+            data: {
+              fromUserId: systemUser.id,
+              fromWalletId: systemWalletId,
+              toUserId: request.currentUser.userId,
+              toWalletId: wallet.id,
+              amountMiles: PROVIDER_CONNECT_BONUS_MILES,
+              note: `Bonus: Conexão ${provider.displayName}`,
+              status: 'COMPLETED'
+            }
+          });
+
+          // Award FlexMiles bonus
           await tx.walletBalance.upsert({
             where: {
               walletId_asset: {
@@ -280,6 +316,18 @@ export async function providerRoutes(app: FastifyInstance) {
               walletId: wallet.id,
               asset: AssetKey.FLEX_MILES,
               amount: PROVIDER_CONNECT_FLEX_BONUS
+            }
+          });
+
+          await tx.transfer.create({
+            data: {
+              fromUserId: systemUser.id,
+              fromWalletId: systemWalletId,
+              toUserId: request.currentUser.userId,
+              toWalletId: wallet.id,
+              amountMiles: PROVIDER_CONNECT_FLEX_BONUS,
+              note: `Bonus FlexMiles: Conexão ${provider.displayName}`,
+              status: 'COMPLETED'
             }
           });
         }
