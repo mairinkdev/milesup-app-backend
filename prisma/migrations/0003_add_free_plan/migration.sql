@@ -21,20 +21,9 @@ VALUES
   (gen_random_uuid(), 'SECURITY_SANDBOX', 'Security Sandbox', 'Internal security provider placeholder', 'MANUAL', ARRAY['FLEX_MILES'], 'FLEX_MILES', '#111827', 1, 0, NOW(), NOW())
 ON CONFLICT (key) DO NOTHING;
 
--- CreateTable SubscriptionPlan FREE if not exists
+-- CreateTable SubscriptionPlans - FREE and PRO
 INSERT INTO "SubscriptionPlan" (id, code, name, description, country, currency, "monthlyAmountMinor", "yearlyAmountMinor", highlighted, perks, "createdAt", "updatedAt")
-VALUES (
-  gen_random_uuid(),
-  'FREE',
-  'MilesUp Free',
-  'Basic wallet, dashboard and account management.',
-  'BR',
-  'BRL',
-  0,
-  0,
-  false,
-  ARRAY['Wallet overview', 'Provider connections', 'Basic history'],
-  NOW(),
-  NOW()
-)
+VALUES
+  (gen_random_uuid(), 'FREE', 'MilesUp Free', 'Basic wallet, dashboard and account management.', 'BR', 'BRL', 0, 0, false, ARRAY['Wallet overview', 'Provider connections', 'Basic history', 'Standard fees on transfers'], NOW(), NOW()),
+  (gen_random_uuid(), 'PRO', 'MilesUp Pro', 'Premium features with real discounts and reduced fees.', 'BR', 'BRL', 2990, 29900, true, ARRAY['Unlimited transfers', '15% discount on FlexMiles purchases', '50% reduced transfer fees', 'Priority support', 'Advanced analytics', 'Real-time notifications'], NOW(), NOW())
 ON CONFLICT (code, country) DO NOTHING;
