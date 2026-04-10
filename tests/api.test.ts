@@ -344,4 +344,99 @@ describeIntegration('MilesUp greenfield API', () => {
     expect(supportMessage.statusCode).toBe(201);
     expect(supportMessage.json().messages.length).toBeGreaterThan(1);
   }, 180_000);
+
+  it('recreates the PRO plan on demand when the environment was not seeded with it', async () => {
+    const { prisma } = await import('../src/lib/prisma');
+
+    const [freePlan, proPlan] = await Promise.all([
+      prisma.subscriptionPlan.findUniqueOrThrow({
+        where: {
+          code_country: {
+            code: 'FREE',
+            country: 'BR'
+          }
+        }
+      }),
+      prisma.subscriptionPlan.findUniqueOrThrow({
+        where: {
+          code_country: {
+            code: 'PRO',
+            country: 'BR'
+          }
+        }
+      })
+    ]);
+
+    await prisma.subscription.updateMany({
+      where: {
+        planId: proPlan.id
+      },
+      data: {
+        planId: freePlan.id,
+        status: 'FREE',
+        interval: null,
+        cancelAtPeriodEnd: false,
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+        nextBillingDate: null,
+        nextAmountMinor: 0,
+        currency: freePlan.currency,
+        paymentMethodId: null,
+        cancelledAt: null
+      }
+    });
+
+    await prisma.checkoutSession.deleteMany({
+      where: {
+        planId: proPlan.id
+      }
+    });
+
+    await prisma.subscriptionPlan.delete({
+      where: {
+        id: proPlan.id
+      }
+    });
+
+    const login = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/login',
+      payload: {
+        email: 'bruno@milesup.app',
+        password: 'Password#123',
+        deviceId: 'test-browser-plans'
+      }
+    });
+
+    expect(login.statusCode).toBe(200);
+
+    const verify2fa = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/login/2fa',
+      payload: {
+        temporaryToken: login.json().temporaryToken,
+        verificationId: login.json().verificationId,
+        code: login.json().devCode
+      }
+    });
+
+    expect(verify2fa.statusCode).toBe(200);
+
+    const plans = await app.inject({
+      method: 'GET',
+      url: '/v1/billing/plans?country=BR',
+      headers: {
+        authorization: `Bearer ${verify2fa.json().accessToken}`
+      }
+    });
+
+    expect(plans.statusCode).toBe(200);
+
+    const pro = plans.json().items.find((item: { code: string }) => item.code === 'PRO');
+
+    expect(pro).toBeDefined();
+    expect(pro.description).toContain('Lower transfer and mileage conversion fees');
+    expect(pro.perks).toContain('Discounted transfer fees');
+    expect(pro.perks).toContain('Discounted mileage conversion fees');
+  }, 60_000);
 });

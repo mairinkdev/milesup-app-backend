@@ -16,6 +16,7 @@ import {
   ensureDefaultFreeSubscription,
   getPlanAmount
 } from '../../lib/billing';
+import { ensureBillingPlans } from '../../lib/billingPlans';
 import { AppError } from '../../lib/errors';
 import {
   mapInvoice,
@@ -125,6 +126,8 @@ export async function billingRoutes(app: FastifyInstance) {
       }
     },
     async (request) => {
+      await ensureBillingPlans(prisma, request.query.country)
+
       const plans = await prisma.subscriptionPlan.findMany({
         where: {
           country: request.query.country
@@ -196,6 +199,8 @@ export async function billingRoutes(app: FastifyInstance) {
       }
     },
     async (request, reply) => {
+      await ensureBillingPlans(prisma, 'BR')
+
       const user = await prisma.user.findUniqueOrThrow({
         where: {
           id: request.currentUser.userId
@@ -465,6 +470,8 @@ export async function billingRoutes(app: FastifyInstance) {
       }
     },
     async (request) => {
+      await ensureBillingPlans(prisma, 'BR')
+
       const [subscription, plan] = await Promise.all([
         prisma.subscription.findFirstOrThrow({
           where: {

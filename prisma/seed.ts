@@ -8,6 +8,7 @@ import {
   SubscriptionStatus
 } from '@prisma/client';
 
+import { defaultBillingPlans } from '../src/lib/billingPlans';
 import { hashRefreshToken, hashSecret } from '../src/lib/auth';
 import { generateFlexKey } from '../src/lib/verification';
 
@@ -218,33 +219,27 @@ async function main() {
     });
   }
 
-  const freePlan = await prisma.subscriptionPlan.create({
-    data: {
-      code: 'FREE',
-      name: 'MilesUp Free',
-      description: 'Basic wallet, dashboard and account management.',
-      country: 'BR',
-      currency: 'BRL',
-      monthlyAmountMinor: 0,
-      yearlyAmountMinor: 0,
-      highlighted: false,
-      perks: ['Wallet overview', 'Provider connections', 'Basic history']
-    }
-  });
+  const seededPlans = [] as Array<{ code: string; id: string; monthlyAmountMinor: number; currency: string }>
 
-  const proPlan = await prisma.subscriptionPlan.create({
-    data: {
-      code: 'PRO',
-      name: 'MilesUp Pro',
-      description: 'Premium transfers, conversions and priority support.',
-      country: 'BR',
-      currency: 'BRL',
-      monthlyAmountMinor: 2990,
-      yearlyAmountMinor: 29900,
-      highlighted: true,
-      perks: ['Unlimited transfers', 'Priority support', 'Advanced insights']
-    }
-  });
+  for (const plan of defaultBillingPlans) {
+    const createdPlan = await prisma.subscriptionPlan.create({
+      data: plan
+    })
+
+    seededPlans.push({
+      code: createdPlan.code,
+      id: createdPlan.id,
+      monthlyAmountMinor: createdPlan.monthlyAmountMinor,
+      currency: createdPlan.currency
+    })
+  }
+
+  const freePlan = seededPlans.find((plan) => plan.code === 'FREE')
+  const proPlan = seededPlans.find((plan) => plan.code === 'PRO')
+
+  if (!freePlan || !proPlan) {
+    throw new Error('Default billing plans could not be created during seed.')
+  }
 
   const alice = await prisma.user.create({
     data: {
@@ -360,7 +355,7 @@ async function main() {
       currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       nextAmountMinor: proPlan.monthlyAmountMinor,
-      currency: 'BRL',
+      currency: proPlan.currency,
       paymentMethodId: aliceCard.id
     }
   });
@@ -384,7 +379,7 @@ async function main() {
         amountDueMinor: proPlan.monthlyAmountMinor,
         amountPaidMinor: proPlan.monthlyAmountMinor,
         amountRemainingMinor: 0,
-        currency: 'BRL',
+        currency: proPlan.currency,
         hostedInvoiceUrl: 'https://app.milesup.com/invoices/seed-paid',
         invoicePdfUrl: 'https://app.milesup.com/invoices/seed-paid.pdf',
         dueDate: new Date(),
@@ -399,7 +394,7 @@ async function main() {
         amountDueMinor: proPlan.monthlyAmountMinor,
         amountPaidMinor: 0,
         amountRemainingMinor: proPlan.monthlyAmountMinor,
-        currency: 'BRL',
+        currency: proPlan.currency,
         hostedInvoiceUrl: 'https://app.milesup.com/invoices/seed-open',
         invoicePdfUrl: 'https://app.milesup.com/invoices/seed-open.pdf',
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),

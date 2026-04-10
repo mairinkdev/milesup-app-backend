@@ -1,5 +1,6 @@
 import { buildApp } from './app';
 import { env } from './config/env';
+import { ensureBillingPlans } from './lib/billingPlans';
 import { ensureProviderCatalog } from './lib/providerCatalog';
 import { prisma } from './lib/prisma';
 
@@ -26,6 +27,8 @@ async function start() {
       app.log.info('prisma: connection established');
       await ensureProviderCatalog();
       app.log.info('provider catalog: ready');
+      await ensureBillingPlans();
+      app.log.info('billing plans: ready');
     })
     .catch((error) => app.log.error({ err: error }, 'prisma: failed to connect'));
 }

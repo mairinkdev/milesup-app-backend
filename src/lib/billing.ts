@@ -2,6 +2,7 @@ import { BillingInterval, CheckoutStatus, InvoiceStatus, PaymentMethodType, Subs
 import type { Prisma, PrismaClient, SubscriptionPlan, User } from '@prisma/client';
 
 import { addDays, generateOpaqueToken } from './auth';
+import { ensureBillingPlans } from './billingPlans';
 import { AppError } from './errors';
 
 export function getPlanAmount(plan: SubscriptionPlan, interval: BillingInterval) {
@@ -13,6 +14,8 @@ export async function ensureDefaultFreeSubscription(
   userId: string,
   country = 'BR'
 ) {
+  await ensureBillingPlans(prisma, country)
+
   const freePlan = await prisma.subscriptionPlan.findFirst({
     where: {
       code: 'FREE',
