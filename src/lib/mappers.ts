@@ -20,6 +20,13 @@ type UserWithAvatar = User & {
   profilePhotoAssetId: string | null;
 };
 
+type ActivityUser = Pick<User, 'id' | 'name' | 'email' | 'flexKey' | 'profilePhotoAssetId'>;
+
+type TransferWithParticipants = Transfer & {
+  fromUser: ActivityUser;
+  toUser: ActivityUser;
+};
+
 export function mapUser(user: UserWithAvatar, appBaseUrl: string) {
   return {
     id: user.id,
@@ -36,6 +43,16 @@ export function mapUser(user: UserWithAvatar, appBaseUrl: string) {
     avatarUrl: user.profilePhotoAssetId ? `${appBaseUrl}/v1/media/${user.profilePhotoAssetId}` : null,
     createdAt: toRequiredIsoString(user.createdAt),
     updatedAt: toRequiredIsoString(user.updatedAt)
+  };
+}
+
+function mapActivityUser(user: ActivityUser, appBaseUrl: string) {
+  return {
+    userId: user.id,
+    fullName: user.name,
+    email: user.email,
+    flexKey: user.flexKey,
+    avatarUrl: user.profilePhotoAssetId ? `${appBaseUrl}/v1/media/${user.profilePhotoAssetId}` : null
   };
 }
 
@@ -178,7 +195,11 @@ export function mapSupportMessage(message: SupportMessage) {
   };
 }
 
-export function mapTransferActivity(transfer: Transfer, currentUserId: string) {
+export function mapTransferActivity(
+  transfer: TransferWithParticipants,
+  currentUserId: string,
+  appBaseUrl: string
+) {
   const direction: 'OUTGOING' | 'INCOMING' =
     transfer.fromUserId === currentUserId ? 'OUTGOING' : 'INCOMING';
 
@@ -192,7 +213,10 @@ export function mapTransferActivity(transfer: Transfer, currentUserId: string) {
     feeMiles: transfer.feeMiles,
     asset: 'FLEX_MILES',
     note: transfer.note,
-    createdAt: toRequiredIsoString(transfer.createdAt)
+    createdAt: toRequiredIsoString(transfer.createdAt),
+    completedAt: toIsoString(transfer.completedAt),
+    sender: mapActivityUser(transfer.fromUser, appBaseUrl),
+    recipient: mapActivityUser(transfer.toUser, appBaseUrl)
   };
 }
 
@@ -208,6 +232,9 @@ export function mapConversionActivity(conversion: Conversion) {
     feeMiles: conversion.feeMiles,
     asset: conversion.toAsset,
     note: conversion.note,
-    createdAt: toRequiredIsoString(conversion.createdAt)
+    createdAt: toRequiredIsoString(conversion.createdAt),
+    completedAt: toIsoString(conversion.completedAt),
+    sender: null,
+    recipient: null
   };
 }

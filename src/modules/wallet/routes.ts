@@ -37,7 +37,26 @@ const activitySchema = z.object({
   asset: z.string(),
   note: z.string().nullable().optional(),
   createdAt: z.string(),
-  amountInMiles: z.number().int().optional()
+  completedAt: z.string().nullable(),
+  amountInMiles: z.number().int().optional(),
+  sender: z
+    .object({
+      userId: z.string().uuid(),
+      fullName: z.string(),
+      email: z.string().email(),
+      flexKey: z.string(),
+      avatarUrl: z.string().nullable()
+    })
+    .nullable(),
+  recipient: z
+    .object({
+      userId: z.string().uuid(),
+      fullName: z.string(),
+      email: z.string().email(),
+      flexKey: z.string(),
+      avatarUrl: z.string().nullable()
+    })
+    .nullable()
 });
 
 const walletSchema = z.object({

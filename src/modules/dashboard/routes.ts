@@ -6,6 +6,31 @@ import { loadWalletActivities } from '../../lib/activity';
 import { mapProviderConnection, mapSubscription, mapWallet } from '../../lib/mappers';
 import { prisma } from '../../lib/prisma';
 
+const activityParticipantSchema = z.object({
+  userId: z.string().uuid(),
+  fullName: z.string(),
+  email: z.string().email(),
+  flexKey: z.string(),
+  avatarUrl: z.string().nullable()
+});
+
+const activitySchema = z.object({
+  id: z.string().uuid(),
+  type: z.enum(['TRANSFER', 'CONVERSION']),
+  title: z.string(),
+  direction: z.enum(['INCOMING', 'OUTGOING']),
+  status: z.string(),
+  amountMiles: z.number().int(),
+  feeMiles: z.number().int(),
+  asset: z.string(),
+  note: z.string().nullable().optional(),
+  createdAt: z.string(),
+  completedAt: z.string().nullable(),
+  amountInMiles: z.number().int().optional(),
+  sender: activityParticipantSchema.nullable(),
+  recipient: activityParticipantSchema.nullable()
+});
+
 export async function dashboardRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>();
 
@@ -66,19 +91,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
               })
             ),
             recentActivities: z.array(
-              z.object({
-                id: z.string().uuid(),
-                type: z.enum(['TRANSFER', 'CONVERSION']),
-                title: z.string(),
-                direction: z.enum(['INCOMING', 'OUTGOING']),
-                status: z.string(),
-                amountMiles: z.number().int(),
-                feeMiles: z.number().int(),
-                asset: z.string(),
-                note: z.string().nullable().optional(),
-                createdAt: z.string(),
-                amountInMiles: z.number().int().optional()
-              })
+              activitySchema
             ),
             subscription: z
               .object({

@@ -1,5 +1,6 @@
-import type { Conversion, PrismaClient, Transfer } from '@prisma/client';
+import type { Conversion, PrismaClient, Transfer, User } from '@prisma/client';
 
+import { env } from '../config/env';
 import { buildPagination } from './formatters';
 import { parsePeriodToDateRange } from './http';
 import { mapConversionActivity, mapTransferActivity } from './mappers';
@@ -11,6 +12,13 @@ type ActivityFilters = {
   direction?: 'ALL' | 'INCOMING' | 'OUTGOING';
   page: number;
   pageSize: number;
+};
+
+type ActivityUser = Pick<User, 'id' | 'name' | 'email' | 'flexKey' | 'profilePhotoAssetId'>;
+
+type TransferWithParticipants = Transfer & {
+  fromUser: ActivityUser;
+  toUser: ActivityUser;
 };
 
 export async function loadWalletActivities(prisma: PrismaClient, filters: ActivityFilters) {
@@ -39,9 +47,29 @@ export async function loadWalletActivities(prisma: PrismaClient, filters: Activi
 
   const [transfers, conversions] = await Promise.all([
     filters.kind === 'CONVERSIONS'
-      ? Promise.resolve([] as Transfer[])
+      ? Promise.resolve([] as TransferWithParticipants[])
       : prisma.transfer.findMany({
           where: transferWhere,
+          include: {
+            fromUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                flexKey: true,
+                profilePhotoAssetId: true
+              }
+            },
+            toUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                flexKey: true,
+                profilePhotoAssetId: true
+              }
+            }
+          },
           orderBy: {
             createdAt: 'desc'
           }
@@ -57,7 +85,7 @@ export async function loadWalletActivities(prisma: PrismaClient, filters: Activi
   ]);
 
   const activities = [
-    ...transfers.map((transfer) => mapTransferActivity(transfer, filters.userId)),
+    ...transfers.map((transfer) => mapTransferActivity(transfer, filters.userId, env.APP_BASE_URL)),
     ...conversions.map(mapConversionActivity)
   ].sort((left, right) => {
     return new Date(right.createdAt ?? '').getTime() - new Date(left.createdAt ?? '').getTime();
