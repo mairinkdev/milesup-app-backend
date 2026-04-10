@@ -70,7 +70,7 @@ export async function authRoutes(app: FastifyInstance) {
           fullName: z.string().min(3),
           email: z.string().email(),
           phone: z.string().min(8).optional(),
-          birthDate: z.string().datetime().optional(),
+          birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/).optional(),
           cpf: z.string().min(11).optional(),
           cnpj: z.string().min(14).optional(),
           role: z.nativeEnum(UserRole).default(UserRole.USER),
