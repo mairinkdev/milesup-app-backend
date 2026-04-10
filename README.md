@@ -167,6 +167,8 @@ This repository is ready for Railway using either Docker or a regular Node deplo
 - `DATABASE_URL` from Railway PostgreSQL
 - `CORS_ORIGIN` with the frontend origin or `*` during validation
 - `JWT_ACCESS_SECRET` with at least 32 characters
+- `RESEND_API_KEY` for real verification and password-reset emails
+- `MAIL_FROM`, `MAIL_FROM_NAME` and optional `MAIL_REPLY_TO`
 - `EXPOSE_DEV_CODES=false` in shared validation environments if you do not want codes in responses
 
 ### With the included Dockerfile
@@ -184,11 +186,19 @@ Use these steps in Railway:
 - Build command: `npm install && npm run build`
 - Start command: `npm run prisma:deploy && npm start`
 
-Seeding is optional in Railway. If you want a demo dataset after the first deploy, run:
+Seeding is strongly recommended right after the first Railway deploy. It is required if you want the initial provider catalog, FREE and PRO plans, demo users and ready-to-test product data:
 
 ```bash
 npm run seed
 ```
+
+Important Railway notes:
+
+- Set `DATABASE_URL` explicitly in the backend service variables, typically using a service reference such as `${{Postgres.DATABASE_URL}}`.
+- Set `APP_BASE_URL` to the final public Railway URL of the backend service.
+- The Docker image installs OpenSSL because Prisma requires it in production.
+- If `RESEND_API_KEY` is configured, registration, login 2FA and password-reset emails are sent through Resend using the MilesUp branded template.
+- If `EXPOSE_DEV_CODES=true`, the API still returns `devCode` for validation environments even when real email sending is enabled.
 
 ## New API overview
 

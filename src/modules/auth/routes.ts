@@ -14,6 +14,7 @@ import {
   verifySecret
 } from '../../lib/auth';
 import { ensureDefaultFreeSubscription } from '../../lib/billing';
+import { sendVerificationEmail } from '../../lib/email';
 import { AppError } from '../../lib/errors';
 import { mapUser } from '../../lib/mappers';
 import { prisma } from '../../lib/prisma';
@@ -127,6 +128,13 @@ export async function authRoutes(app: FastifyInstance) {
           passwordHash,
           transactionPinHash
         }
+      });
+
+      await sendVerificationEmail({
+        to: email,
+        code,
+        purpose: VerificationPurpose.REGISTER,
+        recipientName: body.fullName
       });
 
       reply.status(201);
@@ -310,6 +318,13 @@ export async function authRoutes(app: FastifyInstance) {
         payload: {
           sessionId: session.id
         }
+      });
+
+      await sendVerificationEmail({
+        to: user.email,
+        code,
+        purpose: VerificationPurpose.LOGIN_2FA,
+        recipientName: user.name
       });
 
       return {
@@ -534,6 +549,13 @@ export async function authRoutes(app: FastifyInstance) {
         payload: {
           userId: user.id
         }
+      });
+
+      await sendVerificationEmail({
+        to: email,
+        code,
+        purpose: VerificationPurpose.PASSWORD_RESET,
+        recipientName: user.name
       });
 
       return buildVerificationResponse(email, record.id, record.expiresAt, code);

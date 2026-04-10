@@ -20,7 +20,17 @@ const envSchema = z.object({
     .string()
     .default('true')
     .transform((value) => value.toLowerCase() === 'true'),
+  RESEND_API_KEY: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined),
   MAIL_FROM: z.string().email().default('no-reply@milesup.local'),
+  MAIL_FROM_NAME: z.string().default('MilesUp'),
+  MAIL_REPLY_TO: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined)
+    .pipe(z.string().email().optional()),
   DEV_NOTIFICATION_EMAIL: z.string().email().default('dev-inbox@milesup.local')
 });
 
