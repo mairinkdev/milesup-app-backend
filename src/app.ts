@@ -22,12 +22,22 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(authPlugin);
 
   app.get('/health', async () => {
-    await prisma.$queryRaw`SELECT 1`;
-
     return {
       status: 'ok',
       timestamp: new Date().toISOString()
     };
+  });
+
+  app.get('/ready', async (_request, reply) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return { status: 'ready', timestamp: new Date().toISOString() };
+    } catch (error) {
+      return reply.status(503).send({
+        status: 'not_ready',
+        error: error instanceof Error ? error.message : 'database unreachable'
+      });
+    }
   });
 
   await registerModules(app);

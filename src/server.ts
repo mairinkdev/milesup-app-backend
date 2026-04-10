@@ -14,6 +14,15 @@ async function start() {
     app.log.error(error);
     process.exit(1);
   }
+
+  // Warm up the Prisma connection in the background so the first real
+  // request doesn't pay the connect cost. We don't await it on the
+  // critical path because the /health endpoint must respond fast for
+  // Railway's healthcheck.
+  prisma
+    .$connect()
+    .then(() => app.log.info('prisma: connection established'))
+    .catch((error) => app.log.error({ err: error }, 'prisma: failed to connect'));
 }
 
 void start();
