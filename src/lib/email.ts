@@ -291,7 +291,7 @@ export async function sendTransactionEmail(params: TransactionEmailParams) {
   }
 
   try {
-    const response = await fetch('https://api.resend.com/v1/emails', {
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
@@ -349,7 +349,7 @@ export async function sendVerificationEmail(params: VerificationEmailParams) {
   }
 
   try {
-    const response = await fetch('https://api.resend.com/v1/emails', {
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
